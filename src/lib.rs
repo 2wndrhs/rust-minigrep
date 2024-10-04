@@ -1,8 +1,9 @@
-use std::{error::Error, fs};
+use std::{env, error::Error, fs};
 
 pub struct Config {
     pub query: String,
     pub file_path: String,
+    pub ignore_case: bool,
 }
 
 impl Config {
@@ -15,7 +16,16 @@ impl Config {
         let query = args[1].clone();
         let file_path = args[2].clone();
 
-        Ok(Config { query, file_path })
+        let ignore_case_env = env::var("IGNORE_CASE").is_ok();
+        dbg!(ignore_case_env);
+        let ignore_case_arg = args.get(3).map(|s| s == "IGNORE_CASE").unwrap_or(false);
+        dbg!(ignore_case_arg);
+
+        Ok(Config {
+            query,
+            file_path,
+            ignore_case: ignore_case_env || ignore_case_arg,
+        })
     }
 }
 
@@ -23,8 +33,13 @@ impl Config {
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let contents = fs::read_to_string(config.file_path)?;
 
-    // search 함수에서 반환된 문자열 슬라이스 벡터를 반복하여 각 라인을 출력
-    for line in search(&config.query, &contents) {
+    let results = if config.ignore_case {
+        search_case_insensitive(&config.query, &contents)
+    } else {
+        search(&config.query, &contents)
+    };
+
+    for line in results {
         println!("{line}");
     }
 
