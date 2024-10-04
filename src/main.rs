@@ -7,15 +7,10 @@ fn main() {
 
     let config = Config::build(&args).unwrap_or_else(|err| {
         // 에러가 발생할 경우 클로저 내부의 코드가 실행됨
-        println!("Problem parsing arguments: {err}");
         process::exit(1);
     });
 
-    println!("Searching for {}", config.query);
-    println!("In file {}", config.file_path);
-
     if let Err(e) = minigrep::run(config) {
-        println!("Application error: {e}");
         process::exit(1);
     }
 }
