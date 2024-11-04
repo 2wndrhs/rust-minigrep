@@ -7,24 +7,26 @@ pub struct Config {
 }
 
 impl Config {
-    // String 슬라이스(연속된 String 요소를 참조)를 인자로 받음
-    pub fn build(args: &[String]) -> Result<Config, &str> {
-        if args.len() < 3 {
-            return Err("not enough arguments");
-        }
+    // Iterator 트레이트를 구현하고 String 값을 반환하는 args
+    pub fn build(mut args: impl Iterator<Item = String>) -> Result<Config, &'static str> {
+        args.next();
 
-        let query = args[1].clone();
-        let file_path = args[2].clone();
+        let query = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a query string"),
+        };
 
-        let ignore_case_env = env::var("IGNORE_CASE").is_ok();
-        dbg!(ignore_case_env);
-        let ignore_case_arg = args.get(3).map(|s| s == "IGNORE_CASE").unwrap_or(false);
-        dbg!(ignore_case_arg);
+        let file_path = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a file path"),
+        };
+
+        let ignore_case = env::var("IGNORE_CASE").is_ok();
 
         Ok(Config {
             query,
             file_path,
-            ignore_case: ignore_case_env || ignore_case_arg,
+            ignore_case,
         })
     }
 }
@@ -48,28 +50,19 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 
 // 라이프타임을 명시하여 반환되는 벡터의 문자열 슬라이스가 contents 문자열 슬라이스의 참조임을 나타냄
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let mut results = Vec::new();
-
-    for line in contents.lines() {
-        if line.contains(query) {
-            results.push(line);
-        }
-    }
-
-    results
+    contents
+        .lines()
+        .filter(|line| line.contains(query)) // iterator adapter
+        .collect() // iterator consumed
 }
 
 pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
     let query = query.to_lowercase();
-    let mut results = Vec::new();
 
-    for line in contents.lines() {
-        if line.to_lowercase().contains(&query) {
-            results.push(line);
-        }
-    }
-
-    results
+    contents
+        .lines()
+        .filter(|line| line.to_lowercase().contains(&query))
+        .collect()
 }
 
 #[cfg(test)]
